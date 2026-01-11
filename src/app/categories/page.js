@@ -87,6 +87,7 @@ export default function Kategori() {
   const handleAdd = () => {
     setName("");
     setEditId(null);
+    setError(null)
     setIsModalOpen(true);
   };
   
@@ -105,6 +106,23 @@ export default function Kategori() {
 
     try {
       if (!name) throw new Error("Nama Kategori harus diisi.");
+      
+      const { data: existingCategory, error: checkError } = await supabase
+        .from("categories")
+        .select("id")
+        .ilike("name", name) // case-insensitive
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      if (!editId && existingCategory) {
+        throw new Error("Nama kategori sudah tersedia, silakan gunakan nama lain.");
+      }
+
+      if (editId && existingCategory && existingCategory.id !== editId) {
+        throw new Error("Nama kategori sudah digunakan kategori lain, silakan gunakan nama lain.");
+      }
+
       if (editId) {
         // Update data kategori
         const { error } = await supabase
@@ -244,6 +262,11 @@ export default function Kategori() {
               <h2 className="text-xl font-bold mb-4 text-gray-700">
                 {editId ? "Edit Kategori" : "Tambah Kategori"}
               </h2>
+              {error && (
+                <p className="text-red-500 mb-4 text-sm">
+                  {error}
+                </p>
+              )}
               <form onSubmit={handleAddOrUpdateCategory}>
                 <div className="mb-4">
                   <label className="block text-gray-700 mb-2" htmlFor="name">

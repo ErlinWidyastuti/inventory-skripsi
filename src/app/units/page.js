@@ -87,11 +87,13 @@ export default function Units() {
   const handleAdd = () => {
     setName('');
     setEditId(null);
+    setError(null);
     setIsModalOpen(true);
   };
   
   const handleEdit = (unit) => {
     setEditId(unit.id);
+    setError(null);
     setName(unit.name);
     setIsModalOpen(true);
   };
@@ -104,7 +106,24 @@ export default function Units() {
   setSuccess(null);
 
   try {
-    if (!name) throw new Error('Nama Satuan harus diisi.');
+    if (!name) throw new Error('Nama Kategori harus diisi.');
+    
+    const { data: existingUnit, error: checkError } = await supabase
+      .from("units")
+      .select("id")
+      .ilike("name", name) // case-insensitive
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+
+    if (!editId && existingUnit) {
+      throw new Error("Nama satuan sudah tersedia, silakan gunakan nama lain.");
+    }
+
+    if (editId && existingUnit && existingUnit.id !== editId) {
+      throw new Error("Nama satuan sudah tersedia, silakan gunakan nama lain.");
+    }
+
     if (editId) {
       // Update data satuan
       const { error } = await supabase
@@ -241,6 +260,11 @@ export default function Units() {
               <h2 className="text-xl font-bold mb-4 text-gray-700">
                 {editId ? 'Edit Satuan' : 'Tambah Satuan'}
               </h2>
+              {error && (
+                <p className="text-red-500 mb-4 text-sm">
+                  {error}
+                </p>
+              )}
               <form onSubmit={handleAddOrUpdateUnit}>
                 <div className="mb-4">
                   <label className="block text-gray-700 mb-2" htmlFor="name">

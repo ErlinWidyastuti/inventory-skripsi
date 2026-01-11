@@ -88,12 +88,14 @@ export default function Storages() {
   const handleAdd = () => {
     setName("");
     setEditId(null);
+    setError(null);
     setIsModalOpen(true);
   };
   
   const handleEdit = (storage) => {
     setEditId(storage.id);
     setName(storage.name);
+    setError(null);
     setIsModalOpen(true);
   };
 
@@ -106,6 +108,23 @@ export default function Storages() {
 
     try {
       if (!name) throw new Error("Nama Lokasi Penyimpanan harus diisi.");
+      
+      const { data: existingStorage, error: checkError } = await supabase
+        .from("storages")
+        .select("id")
+        .ilike("name", name) // case-insensitive
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      if (!editId && existingStorage) {
+        throw new Error("Nama lokasi penyimpanan sudah tersedia, silakan gunakan nama lain.");
+      }
+
+      if (editId && existingStorage && existingStorage.id !== editId) {
+        throw new Error("Nama lokasi penyimpanan sudah tersedia, silakan gunakan nama lain.");
+      }
+
       if (editId) {
         // Update data satuan
         const { error } = await supabase
@@ -246,6 +265,11 @@ export default function Storages() {
                   ? "Edit Lokasi Penyimpanan"
                   : "Tambah Lokasi Penyimpanan"}
               </h2>
+              {error && (
+                <p className="text-red-500 mb-4 text-sm">
+                  {error}
+                </p>
+              )}
               <form onSubmit={handleAddOrUpdateStorage}>
                 <div className="mb-4">
                   <label className="block text-gray-700 mb-2" htmlFor="name">

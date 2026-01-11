@@ -90,6 +90,7 @@ export default function Users() {
     setFullName(user.full_name ?? "");
     setEmail(user.email);
     setRole(user.role);
+    setError(null);
     setIsModalOpen(true);
   };
 
@@ -102,6 +103,20 @@ export default function Users() {
 
     try {
       if (!username || !email || !role) throw new Error("Semua field harus diisi.");
+      
+      const { data: existingUsers, error: checkError } = await supabase
+        .from("users")
+        .select("id")
+        .ilike("username", username)
+        .neq("id", editId)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (existingUsers.length > 0) {
+        throw new Error("Username sudah digunakan oleh pengguna lain.");
+      }
+      
       // Ambil data user lama dulu supaya dapat dibandingkan role lama dengan yang baru
       const { data: oldUser, error: fetchError } = await supabase
         .from("users")
@@ -253,6 +268,11 @@ export default function Users() {
               <h2 className="text-xl font-bold mb-4 text-gray-700">
                 Edit Pengguna
               </h2>
+              {error && (
+                <p className="text-red-500 mb-4 text-sm">
+                  {error}
+                </p>
+              )}
               <form onSubmit={handleUpdateUser}>
                 <div className="mb-4">
                   <label
@@ -294,9 +314,9 @@ export default function Users() {
                     type="email"
                     id="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-500"
-                    required
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                    title="Email tidak dapat diubah"
                   />
                 </div>
                 <div className="mb-4">

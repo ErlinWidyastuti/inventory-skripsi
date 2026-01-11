@@ -87,12 +87,14 @@ export default function Periods() {
   const handleAdd = () => {
     setName("");
     setEditId(null);
+    setError(null);
     setIsModalOpen(true);
   };
 
   const handleEdit = (period) => {
     setEditId(period.id);
     setName(period.name);
+    setError(null);
     setIsModalOpen(true);
   };
   
@@ -105,6 +107,22 @@ export default function Periods() {
 
     try {
       if (!name) throw new Error("Nama Periode harus diisi.");
+      const { data: existingPeriod, error: checkError } = await supabase
+        .from("periods")
+        .select("id")
+        .ilike("name", name) // case-insensitive
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      if (!editId && existingPeriod) {
+        throw new Error("Nama periode sudah tersedia, silakan gunakan nama lain.");
+      }
+
+      if (editId && existingPeriod && existingPeriod.id !== editId) {
+        throw new Error("Nama periode sudah tersedia, silakan gunakan nama lain.");
+      }
+
       if (editId) {
         // Update data periode
         const { error } = await supabase
@@ -241,6 +259,11 @@ export default function Periods() {
               <h2 className="text-xl font-bold mb-4 text-gray-700">
                 {editId ? "Edit Periode" : "Tambah Periode"}
               </h2>
+              {error && (
+                <p className="text-red-500 mb-4 text-sm">
+                  {error}
+                </p>
+              )}
               <form onSubmit={handleAddOrUpdatePeriod}>
                 <div className="mb-4">
                   <label className="block text-gray-700 mb-2" htmlFor="name">
