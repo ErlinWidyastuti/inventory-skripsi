@@ -55,7 +55,7 @@ export default function Login() {
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
         <div className="mb-5">
           <h2 className="text-2xl text-center font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Login</h2>
-          <p className="text-sm text-center font-normal text-slate-600">Sistem Inventaris dan<br />Perencanaan Pengadaan Barang</p>
+          <p className="text-sm text-center font-normal text-slate-600">Sistem Inventaris dan<br />Perencanaan Pengadaan Barang Erlin</p>
         </div>
         <form onSubmit={handleLogin}>
           <div className="mb-4">
