@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Pagination from "../../components/Pagination";
 import { Plus, Pencil, Trash2, Search} from "lucide-react";
+import jsPDF from "jspdf";
 
 export default function IncomingItems() {
   // State data
@@ -16,6 +17,7 @@ export default function IncomingItems() {
   const [periods, setPeriods] = useState([]);
   const [storages, setStorages] = useState([]);
   const [user, setUser] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
   // State form
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -138,6 +140,21 @@ export default function IncomingItems() {
     setItems(data);
   };
 
+  const handleToggleLabel = async (id, currentStatus) => {
+    try {
+      const { error } = await supabase
+        .from("incoming_items")
+        .update({ is_labeled: !currentStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      fetchItems();
+    } catch (err) {
+      setError("Gagal memperbarui status label fisik barang");
+    }
+  };
+
   // Ambil inisial dari nama storage
   function getInitials(storageName) {
     return storageName
@@ -243,6 +260,7 @@ export default function IncomingItems() {
           quantity: parseInt(quantity),
           quantity_items_in: parseInt(quantity),
           label: autoLabel,
+          is_labeled: false,
         };
 
         // Tambah data barang masuk baru untuk input ke supabase
@@ -293,6 +311,14 @@ export default function IncomingItems() {
     }
   };
 
+  const handleSelectItem = (id) => {
+    setSelectedItems((prev) =>
+      prev.includes(id)
+        ? prev.filter((itemId) => itemId !== id)
+        : [...prev, id]
+    );
+  };
+
   // Filter untuk melakukan pencarian data
   useEffect(() => {
     if (searchQuery.trim() === "") {
@@ -329,6 +355,75 @@ export default function IncomingItems() {
       setFilteredItems(results);
     }
   }, [searchQuery, items]);
+
+  // DOWNLOAD KODE ATAU LABEL BARANG
+  const handleDownloadCodes = () => {
+    if (selectedItems.length === 0) {
+      alert("Pilih minimal satu barang");
+      return;
+    }
+
+    const selectedData = items.filter(item =>
+      selectedItems.includes(item.id)
+    );
+
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    // Frame Label
+    const boxWidth = 35;
+    const boxHeight = 20;
+    const marginX = 10;
+    const marginY = 15;
+    const gapX = 3;
+    const gapY = 3;
+
+    let x = marginX;
+    let y = marginY;
+
+    selectedData.forEach(item => {
+      const qty = item.quantity_items_in || 0;
+
+      for (let i = 0; i < qty; i++) {
+        if (x + boxWidth > 210 - marginX) {
+          x = marginX;
+          y += boxHeight + gapY;
+        }
+
+        if (y + boxHeight > 297 - marginY) {
+          pdf.addPage();
+          x = marginX;
+          y = marginY;
+        }
+
+        // Gambar kotak
+        pdf.rect(x, y, boxWidth, boxHeight);
+
+        // Kode barang
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text(
+          item.label,
+          x + boxWidth / 2,
+          y + 9,
+          { align: "center" }
+        );
+
+        // Nama barang
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(
+          item.name,
+          x + boxWidth / 2,
+          y + 15,
+          { align: "center", maxWidth: boxWidth - 4 }
+        );
+
+        x += boxWidth + gapX;
+      }
+    });
+
+    pdf.save("label-kode-barang.pdf");
+  };
 
   // Jika masih loading session, tampilkan loading
   if (sessionLoading) {
@@ -376,10 +471,19 @@ export default function IncomingItems() {
                 </div>
               </div>
             </div>
-            {/* Button tambah barang masuk */}
-            <button onClick={handleAdd} className="flex gap-2 bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600 transform transition-transform duration-200 ease-in-out hover:scale-105">
-              <Plus size={22}/> Tambah Barang Masuk
-            </button>
+            <div className="flex flex-col  gap-2">
+              {/* Button tambah barang masuk */}
+              <button onClick={handleAdd} className="flex gap-2 bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600 transform transition-transform duration-200 ease-in-out hover:scale-105">
+                <Plus size={22}/> Tambah Barang Masuk
+              </button>
+              <button
+                onClick={handleDownloadCodes}
+                disabled={selectedItems.length === 0}
+                className="bg-blue-400 text-white px-4 py-2 rounded-xl hover:bg-green-700 disabled:bg-gray-300 transform transition-transform hover:scale-105"
+              >
+                Unduh Kode Barang
+              </button>
+            </div>
           </div>
 
           {error && <p className="text-red-500 mb-4">{error}</p>}
@@ -394,6 +498,7 @@ export default function IncomingItems() {
               <thead>
                 <tr className="bg-gray-200 text-gray-700">
                   <th className="px-4 py-2 text-left">Nama Barang</th>
+                  <th className="px-4 py-2 text-center">Pilih Unduh Kode</th>
                   <th className="px-4 py-2 text-left">Kode Barang</th>
                   <th className="px-4 py-2 text-left">Kategori</th>
                   <th className="px-4 py-2 text-left">Jumlah</th>
@@ -402,6 +507,8 @@ export default function IncomingItems() {
                   <th className="px-4 py-2 text-left">Lokasi Penyimpanan</th>
                   <th className="px-4 py-2 text-left">Tanggal Kadaluarsa</th>
                   <th className="px-4 py-2 text-left">Tanggal Barang Masuk</th>
+                  <th className="px-4 py-2 text-center">Label Fisik</th>
+                  <th className="px-4 py-2 text-center">Status</th>
                   <th className="px-4 py-2 text-left">Aksi</th>
                 </tr>
               </thead>
@@ -409,6 +516,14 @@ export default function IncomingItems() {
                 {currentItems.map((item) => (
                   <tr key={item.id} className="border-b">
                     <td className="px-4 py-2 text-gray-700">{item.name}</td>
+                    <td className="px-4 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(item.id)}
+                        onChange={() => handleSelectItem(item.id)}
+                        className="w-5 h-5 accent-green-600 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-2 text-gray-700">{item.label}</td>
                     <td className="px-4 py-2 text-gray-700">{item.categories?.name}</td>
                     <td className="px-4 py-2 text-gray-700">{item.quantity_items_in}</td>
@@ -420,6 +535,21 @@ export default function IncomingItems() {
                     </td>
                     <td className="px-4 py-2 text-gray-700">
                       {new Date(item.incoming_date).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={item.is_labeled}
+                        onChange={() => handleToggleLabel(item.id, item.is_labeled)}
+                        className="w-5 h-5 cursor-pointer accent-blue-600"
+                      />
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {item.is_labeled ? (
+                        <span className="text-green-500">Sudah Berlabel</span>
+                      ) : (
+                        <span className="text-red-500">Belum berlabel</span>
+                      )}
                     </td>
                     <td className="flex gap-2 px-4 py-2">
                       {item.expiration_date && new Date(item.expiration_date) < new Date() ? (
