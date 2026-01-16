@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../lib/supabase-config";
+import Notification from "../components/Notification";
 import {
   Package,
   LayoutDashboard,
@@ -118,6 +119,9 @@ export default function Sidebar() {
               & Perencanaan Pengadaan Barang
             </p>
           </div>
+          <div className="flex justify-center">
+            <Notification />
+          </div>
         </div>
 
         {/* Navigation Sidebar */}
@@ -168,6 +172,25 @@ export default function Sidebar() {
           <span className="truncate group-hover:scale-110">Logout</span>
         </button>
       </div>
+      
+      {/* <div className="p-6 space-y-3">
+        
+        <div className="flex justify-center">
+          <Notification />
+        </div>
+
+        
+        <button
+          onClick={handleLogout}
+          className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 
+                    text-sm font-medium bg-red-100 text-red-600 
+                    hover:bg-red-700 hover:text-white 
+                    transition-all duration-200 ease-in-out"
+        >
+          <LogOut size={18} />
+          <span>Logout</span>
+        </button>
+      </div> */}
     </div>
   );
 }
